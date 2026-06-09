@@ -4,7 +4,7 @@ Description: Fetches MLB per-game hitting and pitching stats via the boxscore
              (date, player_id, b_or_p) so re-runs are safe.
 Source Data: MLB Stats API via agent.data.mlb_boxscores.
 Outputs: data-lake/01_Bronze/fantasy_baseball_agent/stats_mlb_daily_{year}.csv
-         data-lake/00_Logs/fantasy_baseball_agent/fetch_stats_mlb_daily.jsonl
+         logs/fetch_stats_mlb_daily.jsonl
 """
 
 import argparse

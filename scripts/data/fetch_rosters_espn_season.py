@@ -4,7 +4,7 @@ Description: Snapshots current ESPN fantasy league rosters for all teams and
              appends a dated snapshot row per player.
 Source Data: ESPN Fantasy API (espn-api library) via agent.data.espn_rosters.
 Outputs: data-lake/01_Bronze/fantasy_baseball_agent/roster_espn_season_{year}.csv
-         data-lake/00_Logs/fantasy_baseball_agent/fetch_rosters_espn_season.jsonl
+         logs/fetch_rosters_espn_season.jsonl
 """
 
 import argparse

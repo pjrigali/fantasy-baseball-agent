@@ -1,10 +1,10 @@
 """
 Description: Structured run logger for scripts and workflows.
              Used as a context manager — records start time, end time, duration,
-             status, and any extra fields. Writes a JSONL entry to the data lake
-             log folder on exit and streams messages to the console via Python logging.
+             status, and any extra fields. Writes a JSONL entry to logs/ inside
+             the project on exit and streams messages to the console via Python logging.
 Source Data: N/A — utility module.
-Outputs: data-lake/00_Logs/fantasy_baseball_agent/{script_name}.jsonl
+Outputs: fantasy-baseball-agent/logs/{script_name}.jsonl
 """
 
 import json
@@ -15,11 +15,10 @@ from pathlib import Path
 from typing import Any
 
 _PROJECT_ROOT = Path(__file__).parents[1]
-_REPO_ROOT = _PROJECT_ROOT.parent
 
 
 def _log_path() -> Path:
-    p = _REPO_ROOT / "data-lake" / "00_Logs" / "fantasy_baseball_agent"
+    p = _PROJECT_ROOT / "logs"
     p.mkdir(parents=True, exist_ok=True)
     return p
 
