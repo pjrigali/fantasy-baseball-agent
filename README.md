@@ -15,6 +15,7 @@ An AI-powered fantasy baseball agent with modular tooling for every stage of the
 | `agent/trade` | Trade analysis, valuations, and proposal generation |
 | `agent/scoring` | League scoring rules, stat projections, point calculations |
 | `agent/analysis` | Ad hoc queries and reports |
+| `agent/workflows` | Orchestration sequences that chain modules together (e.g. daily data collection) |
 
 ## Setup
 
@@ -39,7 +40,8 @@ fantasy-baseball-agent/
 │   ├── data/
 │   ├── trade/
 │   ├── scoring/
-│   └── analysis/
+│   ├── analysis/
+│   └── workflows/
 ├── tests/
 ├── scripts/
 ├── data/
