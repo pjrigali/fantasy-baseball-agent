@@ -50,15 +50,20 @@ def main():
         try:
             settings = load_settings(year)
             keeper_count          = settings["draft"]["keeper_count"]
+            team_count            = settings["league_info"]["team_count"]
             custom                = settings.get("custom", {})
             keeper_cost_type      = custom.get("keeper_cost_type", "round_plus_n")
             keeper_cost_increment = int(custom.get("keeper_cost_increment", 1))
             keeper_cost_rule      = custom.get("keeper_cost_rule", "round_drafted + 1")
         except FileNotFoundError:
             keeper_count          = 5
+            team_count            = 10
             keeper_cost_type      = "round_plus_n"
             keeper_cost_increment = 1
             keeper_cost_rule      = "round_drafted + 1"
+
+        # Infer max rounds from draft data
+        max_rounds = max((int(r["round_num"]) for r in draft_rows), default=28)
 
         log.info(f"Keeper cost rule: {keeper_cost_rule}")
         log.info(f"Calculating z-score values (window={args.window} days)...")
@@ -66,12 +71,15 @@ def main():
         player_values = compute_player_values(daily_vals, window=args.window)
         log.info(f"Valued {len(player_values):,} players")
 
+        log.info(f"Draft structure: {team_count} teams x {max_rounds} rounds = {team_count * max_rounds} picks")
         result = analyze_keepers(
             player_values=player_values,
             draft_rows=draft_rows,
             roster_rows=roster_rows,
             my_team_id=creds.team_id,
             keeper_count=keeper_count,
+            team_count=team_count,
+            max_rounds=max_rounds,
             keeper_cost_type=keeper_cost_type,
             keeper_cost_increment=keeper_cost_increment,
             keeper_cost_rule=keeper_cost_rule,

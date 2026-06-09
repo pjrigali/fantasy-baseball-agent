@@ -54,12 +54,40 @@ def load_draft_map(draft_rows: list[dict]) -> dict[str, dict]:
     return result
 
 
+def _implied_round(
+    player_name: str,
+    player_values: dict[str, dict],
+    team_count: int,
+    max_rounds: int,
+) -> int | None:
+    """
+    Map a player's z-score rank to their implied draft round based on league size.
+    Only players within the draftable pool (rank <= team_count * max_rounds) get a round.
+    Players ranked beyond the draft pool return None (undrafted).
+    """
+    import math
+    draft_pool_size = team_count * max_rounds
+    ranked = sorted(
+        ((n, v) for n, v in player_values.items() if v.get("days_active", 0) >= 5),
+        key=lambda x: x[1].get("rolling_z", 0),
+        reverse=True,
+    )
+    for rank, (name, _) in enumerate(ranked, 1):
+        if name == player_name or name.lower() == player_name.lower():
+            if rank > draft_pool_size:
+                return None  # undrafted
+            return math.ceil(rank / team_count)
+    return None
+
+
 def analyze_keepers(
     player_values: dict[str, dict],
     draft_rows: list[dict],
     roster_rows: list[dict],
     my_team_id: int,
     keeper_count: int = 5,
+    team_count: int = 10,
+    max_rounds: int = 28,
     keeper_cost_type: str = "round_plus_n",
     keeper_cost_increment: int = 1,
     keeper_cost_rule: str = "round_drafted + 1",
@@ -131,12 +159,11 @@ def analyze_keepers(
         if keeper_cost is not None and rolling_z is not None:
             # Higher z-score = earlier round = lower round number
             # Simple heuristic: z > 1.5 → round 1-3, z > 0.5 → 4-8, etc.
-            if rolling_z > 1.5:    implied_round = 2
-            elif rolling_z > 0.8:  implied_round = 5
-            elif rolling_z > 0.2:  implied_round = 9
-            elif rolling_z > -0.2: implied_round = 14
-            else:                  implied_round = 20
-            surplus = implied_round - keeper_cost  # positive = good value
+            implied_round = _implied_round(norm, player_values, team_count, max_rounds)
+            if implied_round is not None:
+                surplus = implied_round - keeper_cost  # positive = good value
+            else:
+                surplus = None
 
         candidates.append({
             "player_name":   name,
