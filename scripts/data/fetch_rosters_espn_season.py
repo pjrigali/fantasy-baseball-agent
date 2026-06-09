@@ -4,18 +4,19 @@ Description: Snapshots current ESPN fantasy league rosters for all teams and
              appends a dated snapshot row per player.
 Source Data: ESPN Fantasy API (espn-api library) via agent.data.espn_rosters.
 Outputs: data-lake/01_Bronze/fantasy_baseball_agent/roster_espn_season_{year}.csv
+         data-lake/00_Logs/fantasy_baseball_agent/fetch_rosters_espn_season.jsonl
 """
 
 import argparse
 import sys
-from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[2]))
 
 from agent.data.espn_rosters import fetch_rosters, FIELDNAMES
-from agent.data.storage import bronze_path, read_csv, write_csv, append_log
+from agent.data.storage import bronze_path, read_csv, write_csv
 from agent.credentials import get_espn
+from agent.logger import RunLogger
 
 
 def main():
@@ -25,27 +26,20 @@ def main():
     args = parser.parse_args()
 
     year = args.year or get_espn().season_year
-    print(f"--- ESPN Roster Fetch (year={year}) ---")
-
-    new_rows = fetch_rosters(year=year)
-    print(f"  Fetched {len(new_rows)} player records.")
-
     output_file = bronze_path() / f"roster_espn_season_{year}.csv"
-    existing_rows = read_csv(output_file)
 
-    tag = "[DRY-RUN]" if args.dry_run else "[OK]"
+    with RunLogger("fetch_rosters_espn_season", year=year, dry_run=args.dry_run) as log:
+        new_rows = fetch_rosters(year=year)
+        log.info(f"Fetched {len(new_rows)} player records")
+        log.set(rows_fetched=len(new_rows))
 
-    if new_rows and not args.dry_run:
-        write_csv(output_file, existing_rows + new_rows, FIELDNAMES)
-        append_log("fetch_espn_rosters", {
-            "ts":           datetime.now().isoformat(timespec="seconds"),
-            "status":       "ok",
-            "year":         year,
-            "rows_written": len(new_rows),
-            "csv_path":     str(output_file),
-        })
+        existing_rows = read_csv(output_file)
 
-    print(f"{tag} {len(new_rows)} rows | saved to {output_file}")
+        if new_rows and not args.dry_run:
+            write_csv(output_file, existing_rows + new_rows, FIELDNAMES)
+            log.set(rows_written=len(new_rows), csv_path=str(output_file))
+        elif args.dry_run:
+            log.info("Dry run — no file written")
 
 
 if __name__ == "__main__":

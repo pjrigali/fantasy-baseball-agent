@@ -21,11 +21,6 @@ def bronze_path() -> Path:
     return candidate
 
 
-def log_path() -> Path:
-    p = _REPO_ROOT / "data-lake" / "00_Logs" / "fantasy_baseball_agent"
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
 
 def read_csv(path: Path) -> list[dict]:
     if not path.exists():
@@ -41,8 +36,3 @@ def write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
         writer.writerows(rows)
 
 
-def append_log(name: str, entry: dict) -> None:
-    import json
-    log_file = log_path() / f"{name}.jsonl"
-    with open(log_file, "a", encoding="utf-8") as f:
-        f.write(json.dumps(entry) + "\n")
