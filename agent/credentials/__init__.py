@@ -15,8 +15,8 @@ _CONFIG_PATH = _PROJECT_ROOT / "config.ini"
 _PARENT_CONFIG_PATH = _PROJECT_ROOT.parent / "config.ini"
 
 
-def load_config() -> configparser.ConfigParser:
-    cfg = configparser.ConfigParser()
+def load_config() -> configparser.RawConfigParser:
+    cfg = configparser.RawConfigParser()
     if not _CONFIG_PATH.exists():
         raise FileNotFoundError(
             f"config.ini not found at {_CONFIG_PATH}. "
@@ -28,7 +28,7 @@ def load_config() -> configparser.ConfigParser:
 
 def save_config(sections: dict[str, dict[str, str]]) -> None:
     """Write or update config.ini. Merges with any existing content."""
-    cfg = configparser.ConfigParser()
+    cfg = configparser.RawConfigParser()
     if _CONFIG_PATH.exists():
         cfg.read(_CONFIG_PATH)
     for section, values in sections.items():
@@ -104,7 +104,7 @@ def import_from_parent() -> dict[str, dict[str, str]] | None:
     """
     if not _PARENT_CONFIG_PATH.exists():
         return None
-    parent = configparser.ConfigParser()
+    parent = configparser.RawConfigParser()
     parent.read(_PARENT_CONFIG_PATH)
     if "BASEBALL" not in parent:
         return None
