@@ -22,10 +22,10 @@ Go to [fantasy.espn.com](https://fantasy.espn.com) and sign in with your ESPN ac
 Navigate to your fantasy baseball league. Look at the URL — it will look like:
 
 ```
-https://fantasy.espn.com/baseball/league?leagueId=202084
+https://fantasy.espn.com/baseball/league?leagueId=123456
 ```
 
-Your `league_id` is the number after `leagueId=`. In this example it is **202084**.
+Your `league_id` is the number after `leagueId=`. In this example it is **123456**.
 
 ---
 
@@ -34,10 +34,10 @@ Your `league_id` is the number after `leagueId=`. In this example it is **202084
 Click on your team name to go to your team page. The URL will look like:
 
 ```
-https://fantasy.espn.com/baseball/league?leagueId=202084&teamId=2
+https://fantasy.espn.com/baseball/league?leagueId=123456&teamId=5
 ```
 
-Your `team_id` is the number after `teamId=`. In this example it is **2**.
+Your `team_id` is the number after `teamId=`. In this example it is **5**.
 
 ---
 

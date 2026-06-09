@@ -2,6 +2,8 @@
 
 An AI-powered fantasy baseball agent with modular tooling for every stage of the season.
 
+> **New here?** Start with [CREDENTIALS_GUIDE.md](CREDENTIALS_GUIDE.md) — it walks you through finding your ESPN login cookies and connecting the agent to your league.
+
 ## Modules
 
 | Module | Description |
