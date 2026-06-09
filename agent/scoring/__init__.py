@@ -29,7 +29,7 @@ def load_settings(year: int | None = None) -> dict:
 
 def get_categories(year: int | None = None) -> list[dict]:
     """Return list of category dicts: [{name, stat_id, lower_is_better}, ...]"""
-    return load_settings(year)["categories"]
+    return load_settings(year)["scoring"]["categories"]
 
 
 def get_category_names(year: int | None = None) -> list[str]:

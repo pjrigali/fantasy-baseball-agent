@@ -1,6 +1,7 @@
 """
-Description: Fetches ESPN league settings (scoring categories, lineup slots,
-             roster rules) and saves them to the Bronze data lake as JSON.
+Description: Fetches full ESPN league settings — scoring categories, lineup slots,
+             roster rules, waiver/acquisition settings, draft settings, trade
+             settings, and schedule structure — and saves as JSON.
              Run once per season or any time league settings change.
 Source Data: ESPN Fantasy API via agent.data.espn_settings.
 Outputs: data/raw/settings_espn_season_{year}.json
@@ -32,23 +33,28 @@ def main():
     with RunLogger("fetch_settings_espn_season", year=year, dry_run=args.dry_run) as log:
         settings = fetch_settings(year=year)
 
-        cats    = settings["categories"]
-        starters = settings["starter_slots"]
-        rules   = settings["roster_rules"]
+        info     = settings["league_info"]
+        scoring  = settings["scoring"]
+        roster   = settings["roster"]
+        acq      = settings["acquisition"]
+        draft    = settings["draft"]
+        trade    = settings["trade"]
+        schedule = settings["schedule"]
 
-        log.info(f"League : {settings['league_name']} ({settings['scoring_type']})")
-        log.info(f"Teams  : {settings['team_count']}  |  Season: {settings['reg_season_count']} weeks  |  Playoffs: {settings['playoff_team_count']} teams")
-        log.info(f"Scoring categories ({len(cats)}): {', '.join(c['name'] for c in cats)}")
-        log.info("Starter slots:")
-        for slot in starters:
-            log.info(f"  {slot['position']:<10} x{slot['count']}")
-        log.info(f"Roster rules: bench_unlimited={rules['bench_unlimited']}  move_limit={rules['move_limit']}  locktime={rules['lineup_locktime']}")
+        log.info(f"League   : {info['league_name']}  ({info['team_count']} teams)")
+        log.info(f"Scoring  : {scoring['type']}  —  {len(scoring['categories'])} categories: {', '.join(c['name'] for c in scoring['categories'])}")
+        log.info(f"Season   : {schedule['reg_season_matchup_count']} matchups  |  Playoffs: {schedule['playoff_team_count']} teams  |  Matchup length: {schedule['matchup_period_length_weeks']} week(s)")
+        log.info(f"Starters : {roster['total_starters']} slots  —  " + ", ".join(f"{s['position']}×{s['count']}" for s in roster["starter_slots"]))
+        log.info(f"Roster   : bench_unlimited={roster['bench_unlimited']}  move_limit={roster['move_limit']}  locktime={roster['lineup_locktime']}")
+        log.info(f"Waivers  : type={acq['type']}  hours={acq['waiver_hours']}  process_days={acq['waiver_process_days']}  faab={acq['uses_faab']}")
+        log.info(f"Draft    : type={draft['type']}  date={draft['date']}  keepers={draft['keeper_count']}  time_per_pick={draft['time_per_pick_s']}s")
+        log.info(f"Trade    : deadline={trade['deadline']}  veto_votes={trade['veto_votes_required']}  revision_hours={trade['revision_hours']}")
 
         log.set(
-            league_name=settings["league_name"],
-            scoring_type=settings["scoring_type"],
-            category_count=len(cats),
-            starter_slot_count=sum(s["count"] for s in starters),
+            league_name=info["league_name"],
+            scoring_type=scoring["type"],
+            category_count=len(scoring["categories"]),
+            total_starters=roster["total_starters"],
         )
 
         if not args.dry_run:

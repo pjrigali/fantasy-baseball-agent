@@ -1,18 +1,19 @@
 """
 Description: Fetches comprehensive league settings from ESPN Fantasy API including
-             scoring categories, lineup slot counts per position, bench/IL slots,
-             and roster rules. Settings are league- and season-specific.
-Source Data: ESPN Fantasy API via espn-api League object and raw rosterSettings.
+             scoring categories, lineup slots, roster rules, acquisition/waiver
+             settings, draft settings, trade settings, and schedule structure.
+             Settings are league- and season-specific.
+Source Data: ESPN Fantasy API via espn-api League object and raw settings payload.
 Outputs: Settings dict — caller decides where to save.
-         Canonical save path: bronze/settings_espn_season_{year}.json
+         Canonical save path: data/raw/settings_espn_season_{year}.json
 """
 
+from datetime import datetime, timezone
 from espn_api.baseball import League
 from espn_api.baseball.constant import STATS_MAP, POSITION_MAP
 
 from agent.credentials import get_espn
 
-# Slots that count as active starters (exclude bench and IL)
 _BENCH_SLOT_IDS = {16, 17, 18, 21}
 
 
@@ -22,46 +23,39 @@ def _connect(year: int) -> League:
     return League(league_id=creds.league_id, year=year, espn_s2=creds.s2, swid=swid)
 
 
+def _ts(ms: int | None) -> str | None:
+    """Convert ESPN epoch-millisecond timestamp to ISO date string."""
+    if not ms:
+        return None
+    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
+
+
 def fetch_settings(year: int | None = None) -> dict:
     """
     Fetch full league settings for the given season.
 
-    Returns:
-        {
-          "league_id": int,
-          "season_year": int,
-          "league_name": str,
-          "scoring_type": str,
-          "team_count": int,
-          "reg_season_count": int,
-          "playoff_team_count": int,
-          "matchup_period_length": int,
-          "matchup_periods": dict,
-          "roster_rules": {
-            "bench_unlimited": bool,
-            "move_limit": int,           -1 = unlimited
-            "uses_undroppable_list": bool,
-            "lineup_locktime": str,
-          },
-          "lineup_slots": [
-            { "slot_id": int, "position": str, "count": int, "is_starter": bool }
-          ],
-          "starter_slots": [            # active starters only
-            { "position": str, "count": int }
-          ],
-          "categories": [
-            { "stat_id": int, "name": str, "lower_is_better": bool }
-          ]
-        }
+    Returns a dict with sections:
+      league_info, scoring, roster, lineup_slots, starter_slots,
+      acquisition, draft, trade, schedule
     """
     creds = get_espn()
     year = year or creds.season_year
     league = _connect(year)
     s = league.settings
+    raw = league.espn_request.get_league().get("settings", {})
+
+    # ── League info ──────────────────────────────────────────────────────────
+    league_info = {
+        "league_id":   creds.league_id,
+        "season_year": year,
+        "league_name": s.name,
+        "team_count":  s.team_count,
+        "is_public":   raw.get("isPublic", False),
+    }
 
     # ── Scoring categories ───────────────────────────────────────────────────
     categories = []
-    for item in s._raw_scoring_settings.get("scoringItems", []):
+    for item in raw.get("scoringSettings", {}).get("scoringItems", []):
         stat_id = item["statId"]
         categories.append({
             "stat_id":         stat_id,
@@ -69,9 +63,15 @@ def fetch_settings(year: int | None = None) -> dict:
             "lower_is_better": item.get("isReverseItem", False),
         })
 
-    # ── Lineup slots ─────────────────────────────────────────────────────────
-    raw_roster = league.espn_request.get_league().get("settings", {}).get("rosterSettings", {})
-    slot_counts: dict[str, int] = raw_roster.get("lineupSlotCounts", {})
+    scoring = {
+        "type":                s.scoring_type,
+        "categories":          categories,
+        "stat_qualification":  raw.get("scoringSettings", {}).get("statQualificationMinimum"),
+    }
+
+    # ── Roster / lineup ──────────────────────────────────────────────────────
+    roster_raw = raw.get("rosterSettings", {})
+    slot_counts = roster_raw.get("lineupSlotCounts", {})
 
     lineup_slots = []
     starter_slots = []
@@ -92,27 +92,72 @@ def fetch_settings(year: int | None = None) -> dict:
 
     lineup_slots.sort(key=lambda x: x["slot_id"])
 
-    # ── Roster rules ─────────────────────────────────────────────────────────
-    roster_rules = {
-        "bench_unlimited":      raw_roster.get("isBenchUnlimited", False),
-        "move_limit":           raw_roster.get("moveLimit", -1),
-        "uses_undroppable_list": raw_roster.get("isUsingUndroppableList", False),
-        "lineup_locktime":      raw_roster.get("lineupLocktimeType", ""),
-        "roster_locktime":      raw_roster.get("rosterLocktimeType", ""),
+    roster = {
+        "bench_unlimited":       roster_raw.get("isBenchUnlimited", False),
+        "move_limit":            roster_raw.get("moveLimit", -1),
+        "uses_undroppable_list": roster_raw.get("isUsingUndroppableList", False),
+        "lineup_locktime":       roster_raw.get("lineupLocktimeType", ""),
+        "roster_locktime":       roster_raw.get("rosterLocktimeType", ""),
+        "lineup_slots":          lineup_slots,
+        "starter_slots":         starter_slots,
+        "total_starters":        sum(s["count"] for s in starter_slots),
+    }
+
+    # ── Acquisition / waiver ────────────────────────────────────────────────
+    acq = raw.get("acquisitionSettings", {})
+    acquisition = {
+        "type":                   acq.get("acquisitionType"),
+        "waiver_hours":           acq.get("waiverHours"),
+        "waiver_process_days":    acq.get("waiverProcessDays", []),
+        "waiver_process_hour":    acq.get("waiverProcessHour"),
+        "waiver_order_reset":     acq.get("waiverOrderReset"),
+        "season_acquisition_limit": acq.get("acquisitionLimit"),
+        "matchup_acquisition_limit": acq.get("matchupAcquisitionLimit"),
+        "uses_faab":              acq.get("isUsingAcquisitionBudget", False),
+        "faab_budget":            acq.get("acquisitionBudget") if acq.get("isUsingAcquisitionBudget") else None,
+        "minimum_bid":            acq.get("minimumBid"),
+        "transaction_locking":    acq.get("transactionLockingEnabled"),
+    }
+
+    # ── Draft ────────────────────────────────────────────────────────────────
+    dft = raw.get("draftSettings", {})
+    draft = {
+        "type":              dft.get("type"),
+        "date":              _ts(dft.get("date")),
+        "time_per_pick_s":   dft.get("timePerSelection"),
+        "auction_budget":    dft.get("auctionBudget"),
+        "keeper_count":      dft.get("keeperCount"),
+        "keeper_order_type": dft.get("keeperOrderType"),
+        "keeper_deadline":   _ts(dft.get("keeperDeadlineDate")),
+        "draft_order":       dft.get("pickOrder", []),
+    }
+
+    # ── Trade ────────────────────────────────────────────────────────────────
+    trd = raw.get("tradeSettings", {})
+    trade = {
+        "deadline":           _ts(trd.get("deadlineDate")),
+        "revision_hours":     trd.get("revisionHours"),
+        "veto_votes_required": trd.get("vetoVotesRequired"),
+        "max_trades":         trd.get("max"),
+    }
+
+    # ── Schedule ─────────────────────────────────────────────────────────────
+    sch = raw.get("scheduleSettings", {})
+    schedule = {
+        "reg_season_matchup_count":      sch.get("matchupPeriodCount"),
+        "matchup_period_length_weeks":   sch.get("matchupPeriodLength"),
+        "playoff_matchup_length_weeks":  sch.get("playoffMatchupPeriodLength"),
+        "playoff_team_count":            sch.get("playoffTeamCount"),
+        "playoff_seeding_rule":          sch.get("playoffSeedingRule"),
+        "matchup_periods":               s.matchup_periods,
     }
 
     return {
-        "league_id":              creds.league_id,
-        "season_year":            year,
-        "league_name":            s.name,
-        "scoring_type":           s.scoring_type,
-        "team_count":             s.team_count,
-        "reg_season_count":       s.reg_season_count,
-        "playoff_team_count":     s.playoff_team_count,
-        "matchup_period_length":  s._raw_schedule_settings.get("matchupPeriodLength", 1),
-        "matchup_periods":        s.matchup_periods,
-        "roster_rules":           roster_rules,
-        "lineup_slots":           lineup_slots,
-        "starter_slots":          starter_slots,
-        "categories":             categories,
+        "league_info": league_info,
+        "scoring":     scoring,
+        "roster":      roster,
+        "acquisition": acquisition,
+        "draft":       draft,
+        "trade":       trade,
+        "schedule":    schedule,
     }
