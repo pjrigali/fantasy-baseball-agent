@@ -19,17 +19,33 @@ An AI-powered fantasy baseball agent with modular tooling for every stage of the
 | `agent/analysis` | Ad hoc queries and reports |
 | `agent/workflows` | Orchestration sequences that chain modules together (e.g. daily data collection) |
 
-## Setup
+## First-Run Setup
 
+Run these steps once after forking. They only need to be repeated if credentials expire or league settings change.
+
+**Step 1 — Install dependencies**
 ```bash
-# 1. Install dependencies
 pip install -e ".[dev]"
+```
 
-# 2. Set up credentials (follow CREDENTIALS_GUIDE.md to find your ESPN cookie values)
+**Step 2 — Set up credentials**
+
+See [CREDENTIALS_GUIDE.md](CREDENTIALS_GUIDE.md) for how to find your ESPN cookie values, then run:
+```bash
 python scripts/credentials/setup_credentials.py
 ```
 
-See [CREDENTIALS_GUIDE.md](CREDENTIALS_GUIDE.md) for step-by-step instructions on finding your ESPN `espn_s2`, `SWID`, league ID, and team ID.
+**Step 3 — Fetch league settings** ⚠️ Required before any scoring, team, or trade features work
+```bash
+python scripts/data/fetch_settings_espn_season.py
+```
+This captures your league's scoring categories, lineup slots, roster rules, and season structure from ESPN and saves them locally. Re-run at the start of each new season.
+
+**Step 4 — Run the first data collection**
+```bash
+python scripts/workflows/run_daily_collection.py
+```
+Pulls current ESPN rosters and MLB boxscore stats into the data lake. Schedule this to run daily.
 
 ## Project Structure
 
