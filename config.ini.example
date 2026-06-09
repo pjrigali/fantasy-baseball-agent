@@ -1,0 +1,17 @@
+[espn]
+s2 =
+swid =
+league_id =
+season_year =
+
+[mlb]
+api_base_url = https://statsapi.mlb.com/api/v1
+
+[fangraphs]
+api_key =
+
+[storage]
+db_path = data/processed/fantasy.db
+
+[anthropic]
+api_key =

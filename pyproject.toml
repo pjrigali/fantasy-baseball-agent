@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "fantasy-baseball-agent"
+version = "0.1.0"
+description = "AI-powered fantasy baseball agent"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.28",
+    "espn-api>=0.36",
+    "requests>=2.32",
+    "rich>=13",
+    "typer>=0.12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+]
+
+[project.scripts]
+fba = "agent.cli:app"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
