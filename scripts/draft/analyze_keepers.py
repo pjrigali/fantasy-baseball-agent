@@ -49,12 +49,18 @@ def main():
         # Load league settings for keeper count + cost rule
         try:
             settings = load_settings(year)
-            keeper_count = settings["draft"]["keeper_count"]
-            keeper_cost_rule = settings["custom"].get("keeper_cost_rule", "round_drafted + 1")
+            keeper_count          = settings["draft"]["keeper_count"]
+            custom                = settings.get("custom", {})
+            keeper_cost_type      = custom.get("keeper_cost_type", "round_plus_n")
+            keeper_cost_increment = int(custom.get("keeper_cost_increment", 1))
+            keeper_cost_rule      = custom.get("keeper_cost_rule", "round_drafted + 1")
         except FileNotFoundError:
-            keeper_count = 5
-            keeper_cost_rule = "round_drafted + 1"
+            keeper_count          = 5
+            keeper_cost_type      = "round_plus_n"
+            keeper_cost_increment = 1
+            keeper_cost_rule      = "round_drafted + 1"
 
+        log.info(f"Keeper cost rule: {keeper_cost_rule}")
         log.info(f"Calculating z-score values (window={args.window} days)...")
         daily_vals    = calculate_daily_values(stat_rows, year=year)
         player_values = compute_player_values(daily_vals, window=args.window)
@@ -66,6 +72,8 @@ def main():
             roster_rows=roster_rows,
             my_team_id=creds.team_id,
             keeper_count=keeper_count,
+            keeper_cost_type=keeper_cost_type,
+            keeper_cost_increment=keeper_cost_increment,
             keeper_cost_rule=keeper_cost_rule,
             year=year,
         )

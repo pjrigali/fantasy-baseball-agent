@@ -1,16 +1,38 @@
 """
 Description: Keeper value analysis for the upcoming draft. Uses current season
              z-score rankings to value players, maps each rostered player to their
-             draft round (keeper cost = round_drafted + 1), and calculates surplus
+             draft round cost (driven by the league's keeper_cost_type and
+             keeper_cost_increment from custom settings), and calculates surplus
              value — positive means keeping saves you draft value.
              Aligns with analyze_keepers.py design from fantasy_baseball/.
 Source Data: data/raw/draft_espn_season_{year}.csv
              data/raw/roster_espn_season_{year}.csv
              Output of valuation.compute_player_values()
+             data/raw/settings_espn_season_{year}.json (for keeper cost rule)
 Outputs: List of keeper candidate dicts consumed by scripts/draft/analyze_keepers.py
 """
 
 from agent.team.roster import _normalize_name
+
+
+def parse_keeper_cost(drafted_round: int, cost_type: str, increment: int) -> int | None:
+    """
+    Calculate the keeper cost given the league's cost rule.
+
+    Args:
+        drafted_round: The round the player was originally drafted.
+        cost_type:     'round_plus_n', 'auction', 'none', or 'other'.
+        increment:     The N in round_plus_n, or salary increment for auction.
+
+    Returns:
+        Integer round cost, or None if cost_type is 'none' / unknown.
+    """
+    if cost_type == "round_plus_n":
+        return drafted_round + increment
+    if cost_type == "none":
+        return None
+    # For auction or other types, return None (not round-based)
+    return None
 
 
 def load_draft_map(draft_rows: list[dict]) -> dict[str, dict]:
@@ -38,6 +60,8 @@ def analyze_keepers(
     roster_rows: list[dict],
     my_team_id: int,
     keeper_count: int = 5,
+    keeper_cost_type: str = "round_plus_n",
+    keeper_cost_increment: int = 1,
     keeper_cost_rule: str = "round_drafted + 1",
     year: int | None = None,
 ) -> dict:
@@ -93,7 +117,7 @@ def analyze_keepers(
 
         if draft_info:
             drafted_round = draft_info["round_num"]
-            keeper_cost   = drafted_round + 1   # round_drafted + 1
+            keeper_cost   = parse_keeper_cost(drafted_round, keeper_cost_type, keeper_cost_increment)
             was_keeper    = draft_info["keeper_status"]
         else:
             drafted_round = None

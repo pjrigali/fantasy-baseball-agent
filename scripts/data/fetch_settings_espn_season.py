@@ -27,6 +27,18 @@ from agent.logger import RunLogger
 # Prompts
 # ---------------------------------------------------------------------------
 
+def _build_cost_rule(cost_type: str, increment: str) -> str:
+    if cost_type == "round_plus_n":
+        n = increment or "1"
+        return f"round_drafted + {n}"
+    if cost_type == "auction":
+        inc = increment or "0"
+        return f"auction_salary + {inc}" if inc != "0" else "auction_salary"
+    if cost_type == "none":
+        return "no_cost"
+    return cost_type
+
+
 def _ask(question: str, current: str = "", multiline: bool = False) -> str:
     """Prompt the user for input. Press Enter to keep the current value."""
     hint = f" [{current}]" if current else ""
@@ -68,16 +80,44 @@ def collect_custom_settings(existing: dict | None = None) -> dict:
 
     # ── Keeper rules ─────────────────────────────────────────────────────────
     print("\n[Keeper Rules]")
-    print("  ESPN tracks the keeper count but not how keepers are selected.")
+    print("  ESPN tracks the keeper count but not how keepers are selected or priced.")
 
     keeper_selection = _ask(
-        "How are keepers selected?",
+        "How are keepers selected? (e.g. 'manual', 'automatic', 'auction')",
         ex.get("keeper_selection", "manual"),
     )
-    keeper_cost_rule = _ask(
-        "What is the keeper cost/round rule? (e.g. 'round drafted + 1', 'no cost', 'auction salary')",
-        ex.get("keeper_cost_rule", ""),
+
+    print("\n  Keeper cost type:")
+    print("    round_plus_n  — costs the round they were drafted + N (e.g. drafted R4, keep at R5)")
+    print("    auction       — costs their auction salary (+ optional increment)")
+    print("    none          — no cost, free to keep")
+    print("    other         — custom rule")
+    keeper_cost_type = _ask(
+        "Keeper cost type",
+        ex.get("keeper_cost_type", "round_plus_n"),
     )
+
+    keeper_cost_increment = ex.get("keeper_cost_increment", "1")
+    if keeper_cost_type == "round_plus_n":
+        keeper_cost_increment = _ask(
+            "What is N? (round drafted + N = keeper cost round)",
+            keeper_cost_increment,
+        )
+        try:
+            keeper_cost_increment = str(int(keeper_cost_increment))
+        except ValueError:
+            keeper_cost_increment = "1"
+    elif keeper_cost_type == "auction":
+        keeper_cost_increment = _ask(
+            "Salary increment each year kept (enter 0 if salary stays flat)",
+            keeper_cost_increment,
+        )
+    else:
+        keeper_cost_increment = "0"
+
+    keeper_cost_rule = _build_cost_rule(keeper_cost_type, keeper_cost_increment)
+    print(f"  -> Cost rule: {keeper_cost_rule}")
+
     keeper_notes = _ask(
         "Any additional keeper notes?",
         ex.get("keeper_notes", ""),
@@ -120,14 +160,16 @@ def collect_custom_settings(existing: dict | None = None) -> dict:
     )
 
     return {
-        "keeper_selection":   keeper_selection,
-        "keeper_cost_rule":   keeper_cost_rule,
-        "keeper_notes":       keeper_notes,
-        "scoring_notes":      scoring_notes,
-        "trade_veto_process": trade_veto_process,
-        "waiver_order_rule":  waiver_order_rule,
-        "playoff_notes":      playoff_notes,
-        "house_rules":        house_rules,
+        "keeper_selection":      keeper_selection,
+        "keeper_cost_type":      keeper_cost_type,
+        "keeper_cost_increment": keeper_cost_increment,
+        "keeper_cost_rule":      keeper_cost_rule,
+        "keeper_notes":          keeper_notes,
+        "scoring_notes":         scoring_notes,
+        "trade_veto_process":    trade_veto_process,
+        "waiver_order_rule":     waiver_order_rule,
+        "playoff_notes":         playoff_notes,
+        "house_rules":           house_rules,
     }
 
 
