@@ -3,7 +3,7 @@ Description: Snapshots current ESPN fantasy league rosters for all teams and
              saves them to the Bronze data lake. Safe to run daily — each run
              appends a dated snapshot row per player.
 Source Data: ESPN Fantasy API (espn-api library) via agent.data.espn_rosters.
-Outputs: data-lake/01_Bronze/fantasy_baseball_agent/roster_espn_season_{year}.csv
+Outputs: data/raw/roster_espn_season_{year}.csv
          logs/fetch_rosters_espn_season.jsonl
 """
 
@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parents[2]))
 
 from agent.data.espn_rosters import fetch_rosters, FIELDNAMES
-from agent.data.storage import bronze_path, read_csv, write_csv
+from agent.data.storage import raw_path, read_csv, write_csv
 from agent.credentials import get_espn
 from agent.logger import RunLogger
 
@@ -26,7 +26,7 @@ def main():
     args = parser.parse_args()
 
     year = args.year or get_espn().season_year
-    output_file = bronze_path() / f"roster_espn_season_{year}.csv"
+    output_file = raw_path() / f"roster_espn_season_{year}.csv"
 
     with RunLogger("fetch_rosters_espn_season", year=year, dry_run=args.dry_run) as log:
         new_rows = fetch_rosters(year=year)

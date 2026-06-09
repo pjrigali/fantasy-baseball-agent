@@ -3,7 +3,7 @@ Description: Fetches ESPN league settings (scoring categories, lineup slots,
              roster rules) and saves them to the Bronze data lake as JSON.
              Run once per season or any time league settings change.
 Source Data: ESPN Fantasy API via agent.data.espn_settings.
-Outputs: data-lake/01_Bronze/fantasy_baseball_agent/settings_espn_season_{year}.json
+Outputs: data/raw/settings_espn_season_{year}.json
          logs/fetch_settings_espn_season.jsonl
 """
 
@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parents[2]))
 
 from agent.credentials import get_espn
 from agent.data.espn_settings import fetch_settings
-from agent.data.storage import bronze_path
+from agent.data.storage import raw_path
 from agent.logger import RunLogger
 
 
@@ -27,7 +27,7 @@ def main():
     args = parser.parse_args()
 
     year = args.year or get_espn().season_year
-    output_file = bronze_path() / f"settings_espn_season_{year}.json"
+    output_file = raw_path() / f"settings_espn_season_{year}.json"
 
     with RunLogger("fetch_settings_espn_season", year=year, dry_run=args.dry_run) as log:
         settings = fetch_settings(year=year)

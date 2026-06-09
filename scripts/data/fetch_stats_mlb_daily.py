@@ -3,7 +3,7 @@ Description: Fetches MLB per-game hitting and pitching stats via the boxscore
              endpoint and appends new rows to the season CSV. Deduplicates on
              (date, player_id, b_or_p) so re-runs are safe.
 Source Data: MLB Stats API via agent.data.mlb_boxscores.
-Outputs: data-lake/01_Bronze/fantasy_baseball_agent/stats_mlb_daily_{year}.csv
+Outputs: data/raw/stats_mlb_daily_{year}.csv
          logs/fetch_stats_mlb_daily.jsonl
 """
 
@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parents[2]))
 
 from agent.data.mlb_boxscores import fetch_boxscores, FIELDNAMES
-from agent.data.storage import bronze_path, read_csv, write_csv
+from agent.data.storage import raw_path, read_csv, write_csv
 from agent.logger import RunLogger
 
 
@@ -28,7 +28,7 @@ def main():
     args = parser.parse_args()
 
     season = args.year
-    output_file = bronze_path() / f"stats_mlb_daily_{season}.csv"
+    output_file = raw_path() / f"stats_mlb_daily_{season}.csv"
 
     with RunLogger("fetch_stats_mlb_daily", season=season, dry_run=args.dry_run) as log:
         existing_rows = read_csv(output_file)

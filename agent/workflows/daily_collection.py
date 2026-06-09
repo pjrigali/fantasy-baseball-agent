@@ -16,7 +16,7 @@ from agent.data.espn_rosters import fetch_rosters
 from agent.data.espn_rosters import FIELDNAMES as ROSTER_FIELDNAMES
 from agent.data.mlb_boxscores import fetch_boxscores
 from agent.data.mlb_boxscores import FIELDNAMES as BOXSCORE_FIELDNAMES
-from agent.data.storage import bronze_path, read_csv, write_csv
+from agent.data.storage import raw_path, read_csv, write_csv
 from agent.logger import RunLogger
 
 
@@ -70,7 +70,7 @@ def _run_espn_rosters(year: int, dry_run: bool, log: RunLogger) -> dict:
         rows = fetch_rosters(year=year)
         log.info(f"  ESPN rosters: {len(rows)} player records fetched")
         if rows and not dry_run:
-            path = bronze_path() / f"roster_espn_season_{year}.csv"
+            path = raw_path() / f"roster_espn_season_{year}.csv"
             existing = read_csv(path)
             write_csv(path, existing + rows, ROSTER_FIELDNAMES)
             log.info(f"  ESPN rosters: saved to {path.name}")
@@ -89,7 +89,7 @@ def _run_mlb_boxscores(
     log: RunLogger,
 ) -> dict:
     try:
-        path = bronze_path() / f"stats_mlb_daily_{year}.csv"
+        path = raw_path() / f"stats_mlb_daily_{year}.csv"
         existing = read_csv(path)
         new_rows = fetch_boxscores(
             season=year,

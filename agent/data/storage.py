@@ -1,25 +1,28 @@
 """
 Description: Shared path resolution and CSV read/write helpers for the data layer.
-             Resolves the Bronze data lake path the same way mlb_processing.py does,
-             so both projects write to the same shared data lake.
+             All data is stored inside the project under data/raw/ and data/processed/.
 Source Data: N/A — utility module.
 Outputs: N/A — utility module.
 """
 
 import csv
-import os
 from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).parents[2]
-_REPO_ROOT = _PROJECT_ROOT.parent
 
 
-def bronze_path() -> Path:
-    """Resolve the Bronze data lake path for this project."""
-    candidate = _REPO_ROOT / "data-lake" / "01_Bronze" / "fantasy_baseball_agent"
-    candidate.mkdir(parents=True, exist_ok=True)
-    return candidate
+def raw_path() -> Path:
+    """Path for raw collected data (ESPN, MLB API responses)."""
+    p = _PROJECT_ROOT / "data" / "raw"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
 
+
+def processed_path() -> Path:
+    """Path for processed/derived data."""
+    p = _PROJECT_ROOT / "data" / "processed"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
 
 
 def read_csv(path: Path) -> list[dict]:
@@ -34,5 +37,3 @@ def write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
         writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
-
-
