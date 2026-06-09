@@ -23,7 +23,8 @@
 
 All data files are saved to:
 ```
-data-lake/01_Bronze/fantasy_baseball_agent/
+data/raw/       ← raw collected data (CSV, JSON)
+data/processed/ ← derived/processed outputs
 ```
 
 ---
