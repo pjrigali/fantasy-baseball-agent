@@ -124,8 +124,6 @@ def build_team_projections(
 
     Returns { espn_team_id: { cat_name: value } }
     """
-    from agent.team.roster import _is_on_il as _il_check
-
     categories = get_categories(year)
     cat_names = {c["name"] for c in categories}
 
