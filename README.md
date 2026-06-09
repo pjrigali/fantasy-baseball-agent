@@ -17,12 +17,14 @@ An AI-powered fantasy baseball agent with modular tooling for every stage of the
 ## Setup
 
 ```bash
-# 1. Copy and fill in credentials
-copy config.ini.example config.ini
-
-# 2. Install dependencies
+# 1. Install dependencies
 pip install -e ".[dev]"
+
+# 2. Set up credentials (follow CREDENTIALS_GUIDE.md to find your ESPN cookie values)
+python scripts/credentials/setup_credentials.py
 ```
+
+See [CREDENTIALS_GUIDE.md](CREDENTIALS_GUIDE.md) for step-by-step instructions on finding your ESPN `espn_s2`, `SWID`, league ID, and team ID.
 
 ## Project Structure
 

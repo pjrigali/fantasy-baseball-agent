@@ -22,7 +22,8 @@ def prompt(label: str, current: str = "", secret: bool = False) -> str:
 
 
 def run():
-    print("\n=== Fantasy Baseball Agent — Credential Setup ===\n")
+    print("\n=== Fantasy Baseball Agent — Credential Setup ===")
+    print("  Need help finding your credentials? See CREDENTIALS_GUIDE.md\n")
 
     sections: dict[str, dict[str, str]] = {}
 
