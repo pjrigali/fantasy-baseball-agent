@@ -26,12 +26,6 @@
 
 ---
 
-## Pending PRs
-
-- [ ] `feature/llm-provider-layer` — merge on GitHub to bring LLM layer into main
-
----
-
 ## Enhancements
 
 - [ ] Wire LLM summaries into weekly prep report — natural language takeaways after each analysis step
