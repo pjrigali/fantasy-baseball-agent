@@ -16,25 +16,12 @@
 - [x] Matchup preview — live H2H category standings with close-category detection
 - [x] Player trends — hot/cold players across 7/14/30d windows, roster filter
 - [x] Streamer finder — SP streamers by starts + opponent weakness, RP streamers by SVHD rate
-- [x] Weekly prep workflow — orchestrates all 5 analysis steps into one command, saves markdown report
-
----
-
-## Next
-
-### Workflows (`agent/workflows/`)
-- [ ] `trade_scan.py` — periodic scan for trade opportunities across the league
-- [ ] `draft_prep.py` — pre-draft: keeper analysis + draft board rankings in one run
-- [ ] Script: `scripts/workflows/run_trade_scan.py`
-- [ ] Script: `scripts/workflows/run_draft_prep.py`
-
----
-
-## Data Gaps
-
-- [ ] `fetch_standings_espn_season.py` — current league standings and category ranks per matchup
-- [ ] `fetch_schedule_espn_matchup.py` — matchup schedule and scoring period dates
-- [ ] `fetch_rankings_espn_daily.py` — ESPN player ownership % and rankings
+- [x] Weekly prep workflow — direct imports, saves markdown report (`run_weekly_prep.py`)
+- [x] Trade scan workflow — scans all team pairs for mutual-benefit trades (`run_trade_scan.py`)
+- [x] Draft prep workflow — keeper analysis + draft board in one run (`run_draft_prep.py`)
+- [x] Data: ESPN standings — league W/L/T snapshot (`fetch_standings_espn_season.py`)
+- [x] Data: ESPN schedule — full 18-week matchup schedule (`fetch_schedule_espn_season.py`)
+- [x] Data: ESPN rankings — player ownership % and start % (`fetch_rankings_espn_daily.py`)
 
 ---
 
