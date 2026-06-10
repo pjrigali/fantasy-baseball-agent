@@ -23,15 +23,20 @@
 - [x] Data: ESPN schedule — full 18-week matchup schedule (`fetch_schedule_espn_season.py`)
 - [x] Data: ESPN rankings — player ownership % and start % (`fetch_rankings_espn_daily.py`)
 - [x] LLM provider layer — Anthropic, OpenAI, Google Gemini, Ollama via common interface (`agent/llm/`)
+- [x] LLM summaries in weekly prep — per-step takeaways, `--no-llm` flag, collapsible data in report
+- [x] Lineup optimizer — game-day detection + z-score slot assignment (`suggest_lineup.py`)
+- [x] ADP comparison in draft board — VALUE/REACH signals using draft history as ADP proxy
 
 ---
 
-## Enhancements
+## Pending PRs
 
-- [ ] Wire LLM summaries into weekly prep report — natural language takeaways after each analysis step
-- [ ] Lineup optimizer — suggest best active/bench lineup given today's MLB schedule
-- [ ] ADP comparison in draft board — flag players going earlier/later than their projected value
-- [ ] Counter-offer logic in trade analysis — suggest counter based on fair value
-- [ ] Add `--since-last-run` flag to `run_daily_collection.py` for smarter incremental date detection
-- [ ] Add FanGraphs projections as a data source for trade/draft valuation
+- [ ] `feature/trade-counter-offer` — counter-offer generator, scan opponent roster for better alternatives
+
+---
+
+## Remaining Enhancements
+
+- [ ] `--since-last-run` flag on `run_daily_collection.py` — smarter incremental date detection
+- [ ] FanGraphs projections — external projection source for trade/draft valuation
 - [ ] Unit tests for scoring category calculations (`tests/`)
