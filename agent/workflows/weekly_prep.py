@@ -2,7 +2,8 @@
 Description: Weekly prep workflow. Runs before each matchup week to give a
              complete picture: matchup standing, roster trends, SP/RP analysis,
              and streamers. Uses direct imports from agent modules (no subprocess).
-             Saves a combined markdown report to reports/.
+             If an LLM is configured in config.ini, each step gets a plain-English
+             takeaway appended to the markdown report.
 Source Data: All data in data/raw/ plus live ESPN API calls.
 Outputs: reports/weekly_prep_{YYYY-MM-DD}.md
          logs/weekly_prep.jsonl
@@ -15,44 +16,112 @@ _PROJECT_ROOT = Path(__file__).parents[2]
 _REPORTS      = _PROJECT_ROOT / "reports"
 
 
-def run(year: int | None = None, dry_run: bool = False) -> dict:
+# ── System prompts per step ─────────────────────────────────────────────────
+
+_SYSTEM_PROMPTS = {
+    "Matchup Preview": (
+        "You are a concise fantasy baseball analyst. "
+        "Given the current H2H matchup standings, identify: "
+        "(1) which categories are already decided, "
+        "(2) which are close and could swing, "
+        "(3) one specific action the team should take to protect or flip a close category. "
+        "Be direct. 3-4 sentences max."
+    ),
+    "Player Trends": (
+        "You are a concise fantasy baseball analyst. "
+        "Given these 7/14/30-day z-score trends for a fantasy roster, identify: "
+        "(1) the 1-2 hottest players to keep starting, "
+        "(2) the 1-2 coldest players who may need to be benched or dropped. "
+        "Be direct. 3-4 sentences max."
+    ),
+    "SP Analysis": (
+        "You are a concise fantasy baseball analyst. "
+        "Given this starting pitcher analysis with flagged underperformers and FA options, "
+        "give a clear add/drop recommendation — who to drop and who to pick up, and why. "
+        "If no changes are needed, say so. 3-4 sentences max."
+    ),
+    "RP Analysis": (
+        "You are a concise fantasy baseball analyst. "
+        "Given this relief pitcher analysis with flagged underperformers and FA options, "
+        "give a clear add/drop recommendation — who to drop and who to pick up, and why. "
+        "Focus on SVHD opportunity. If no changes are needed, say so. 3-4 sentences max."
+    ),
+    "Streamer Finder": (
+        "You are a concise fantasy baseball analyst. "
+        "Given these streamer options for the week, pick the single best SP streamer "
+        "and single best RP streamer and explain why in one sentence each. "
+        "Mention the opponent or role context. 3-4 sentences max."
+    ),
+}
+
+
+def run(year: int | None = None, dry_run: bool = False, use_llm: bool = True) -> dict:
     """
     Run all weekly prep steps and return a summary.
 
+    Args:
+        year:    Season year.
+        dry_run: Run steps but do not save report.
+        use_llm: If True and an LLM is configured, generate a takeaway per step.
+
     Returns:
-        { "date", "steps": [ step_result, ... ], "ok": int, "errors": int, "report_path": str | None }
+        { "date", "steps", "ok", "errors", "report_path", "llm_used" }
     """
     from agent.credentials import get_espn
     from agent.data.storage import raw_path, read_csv
+    from agent.llm import get_llm, is_configured
 
     creds     = get_espn()
     year      = year or creds.season_year
     today     = date.today().isoformat()
     stat_rows = read_csv(raw_path() / f"stats_mlb_daily_{year}.csv")
 
+    # Set up LLM if available
+    llm = None
+    if use_llm and is_configured():
+        try:
+            llm = get_llm()
+        except Exception:
+            llm = None
+
     results = [
-        _run_step("Matchup Preview",  _step_matchup,   year=year),
-        _run_step("Player Trends",    _step_trends,    stat_rows=stat_rows, year=year),
-        _run_step("SP Analysis",      _step_sp,        stat_rows=stat_rows, year=year),
-        _run_step("RP Analysis",      _step_rp,        stat_rows=stat_rows, year=year),
-        _run_step("Streamer Finder",  _step_streamers, stat_rows=stat_rows, year=year),
+        _run_step("Matchup Preview", _step_matchup,   llm=llm, year=year),
+        _run_step("Player Trends",   _step_trends,    llm=llm, stat_rows=stat_rows, year=year),
+        _run_step("SP Analysis",     _step_sp,        llm=llm, stat_rows=stat_rows, year=year),
+        _run_step("RP Analysis",     _step_rp,        llm=llm, stat_rows=stat_rows, year=year),
+        _run_step("Streamer Finder", _step_streamers, llm=llm, stat_rows=stat_rows, year=year),
     ]
 
-    report_path = _build_report(today, results) if not dry_run else None
+    report_path = _build_report(today, results, llm_used=llm is not None) if not dry_run else None
     ok     = sum(1 for s in results if s["status"] == "ok")
     errors = sum(1 for s in results if s["status"] == "error")
 
-    return {"date": today, "steps": results, "ok": ok, "errors": errors, "report_path": report_path}
+    return {
+        "date": today, "steps": results,
+        "ok": ok, "errors": errors,
+        "report_path": report_path,
+        "llm_used": llm is not None,
+        "llm_provider": getattr(llm, "provider", None),
+    }
 
 
-def _run_step(label: str, fn, **kwargs) -> dict:
+def _run_step(label: str, fn, llm=None, **kwargs) -> dict:
+    """Run one step, then optionally generate an LLM takeaway."""
     try:
-        return {"label": label, "status": "ok", "output": fn(**kwargs), "error": ""}
+        output = fn(**kwargs)
+        summary = None
+        if llm and output:
+            try:
+                system = _SYSTEM_PROMPTS.get(label)
+                summary = llm.complete(prompt=output, system=system, max_tokens=200)
+            except Exception as e:
+                summary = f"(LLM summary failed: {e})"
+        return {"label": label, "status": "ok", "output": output, "summary": summary, "error": ""}
     except Exception as e:
-        return {"label": label, "status": "error", "output": "", "error": str(e)}
+        return {"label": label, "status": "error", "output": "", "summary": None, "error": str(e)}
 
 
-# ── Step implementations ────────────────────────────────────────────────
+# ── Step implementations ────────────────────────────────────────────────────
 
 def _step_matchup(year: int) -> str:
     from agent.analysis.matchup import fetch_matchup_preview, format_preview
@@ -100,19 +169,29 @@ def _step_streamers(stat_rows: list, year: int) -> str:
     return "\n".join(lines)
 
 
-# ── Report builder ──────────────────────────────────────────────────────
+# ── Report builder ──────────────────────────────────────────────────────────
 
-def _build_report(today: str, steps: list[dict]) -> str:
+def _build_report(today: str, steps: list[dict], llm_used: bool = False) -> str:
     _REPORTS.mkdir(exist_ok=True)
     report_path = _REPORTS / f"weekly_prep_{today}.md"
+
     lines = [f"# Weekly Prep Report — {today}", ""]
+    if llm_used:
+        lines += ["> *AI takeaways included — configure `[llm]` in config.ini to enable/change provider.*", ""]
+
     for step in steps:
         badge = {"ok": "OK", "error": "ERROR"}[step["status"]]
         lines += [f"## {step['label']}  [{badge}]", ""]
+
+        if step.get("summary"):
+            lines += [f"**Takeaway:** {step['summary']}", ""]
+
         if step["output"]:
-            lines += ["```", str(step["output"]), "```", ""]
+            lines += ["<details><summary>Full data</summary>", "", "```",
+                      str(step["output"]), "```", "", "</details>", ""]
         if step["error"]:
             lines += [f"> **Error:** {step['error']}", ""]
-    lines += ["---", f"*Generated {today}*"]
+
+    lines += ["---", f"*Generated {today}{'  ·  LLM: enabled' if llm_used else ''}*"]
     report_path.write_text("\n".join(lines), encoding="utf-8")
     return str(report_path)
