@@ -22,15 +22,22 @@
 - [x] Data: ESPN standings — league W/L/T snapshot (`fetch_standings_espn_season.py`)
 - [x] Data: ESPN schedule — full 18-week matchup schedule (`fetch_schedule_espn_season.py`)
 - [x] Data: ESPN rankings — player ownership % and start % (`fetch_rankings_espn_daily.py`)
+- [x] LLM provider layer — Anthropic, OpenAI, Google Gemini, Ollama via common interface (`agent/llm/`)
+
+---
+
+## Pending PRs
+
+- [ ] `feature/llm-provider-layer` — merge on GitHub to bring LLM layer into main
 
 ---
 
 ## Enhancements
 
+- [ ] Wire LLM summaries into weekly prep report — natural language takeaways after each analysis step
 - [ ] Lineup optimizer — suggest best active/bench lineup given today's MLB schedule
 - [ ] ADP comparison in draft board — flag players going earlier/later than their projected value
 - [ ] Counter-offer logic in trade analysis — suggest counter based on fair value
 - [ ] Add `--since-last-run` flag to `run_daily_collection.py` for smarter incremental date detection
 - [ ] Add FanGraphs projections as a data source for trade/draft valuation
-- [ ] Claude API integration in `agent/analysis/` for natural language summaries and recommendations
 - [ ] Unit tests for scoring category calculations (`tests/`)
