@@ -14,5 +14,21 @@ api_key =
 [storage]
 db_path = data/processed/fantasy.db
 
+# ── LLM Provider ────────────────────────────────────────────────────────────
+# Choose one provider. Only the matching [section] needs an api_key.
+# Supported: anthropic | openai | google | ollama
+[llm]
+provider = anthropic
+model    = claude-sonnet-4-5
+
 [anthropic]
 api_key =
+
+[openai]
+api_key =
+
+[google]
+api_key =
+
+[ollama]
+base_url = http://localhost:11434
