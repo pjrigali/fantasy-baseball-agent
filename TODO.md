@@ -26,12 +26,7 @@
 - [x] LLM summaries in weekly prep — per-step takeaways, `--no-llm` flag, collapsible data in report
 - [x] Lineup optimizer — game-day detection + z-score slot assignment (`suggest_lineup.py`)
 - [x] ADP comparison in draft board — VALUE/REACH signals using draft history as ADP proxy
-
----
-
-## Pending PRs
-
-- [ ] `feature/trade-counter-offer` — counter-offer generator, scan opponent roster for better alternatives
+- [x] Counter-offer logic — scan opponent roster for better alternatives to a proposed trade (`counter_offer.py`)
 
 ---
 
