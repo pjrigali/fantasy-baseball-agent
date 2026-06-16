@@ -139,15 +139,13 @@ def _step_trends(stat_rows: list, year: int) -> str:
 
 
 def _step_sp(stat_rows: list, year: int) -> str:
-    from agent.team.pitchers import analyze_sps
-    from scripts.team.analyze_sp_replacements import build_report
-    return build_report(analyze_sps(stat_rows, year=year))
+    from agent.team.pitchers import analyze_sps, build_sp_report
+    return build_sp_report(analyze_sps(stat_rows, year=year))
 
 
 def _step_rp(stat_rows: list, year: int) -> str:
-    from agent.team.pitchers import analyze_rps
-    from scripts.team.analyze_rp_replacements import build_report
-    return build_report(analyze_rps(stat_rows, year=year))
+    from agent.team.pitchers import analyze_rps, build_rp_report
+    return build_rp_report(analyze_rps(stat_rows, year=year))
 
 
 def _step_streamers(stat_rows: list, year: int) -> str:

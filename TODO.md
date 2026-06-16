@@ -49,8 +49,17 @@
 ### Quality
 - [x] Unit tests — 23 tests covering stat aggregation, matchup comparison, z-score math (`tests/`)
 
+### Structure Cleanup (2026-06-16)
+- [x] Packaging fix — valid build backend + `[tool.setuptools.packages.find]`; `pip install -e .` works
+- [x] `fba` CLI — `agent/cli.py` exposes daily/weekly/trade-scan/draft-prep workflows
+- [x] Shared stat math — `agent/stats.py` ends rate-stat duplication across 6 call sites
+- [x] Shared player identity — `agent/data/players.py` (NFKD name normalization + IL detection)
+- [x] Layering fix — pitcher report builders moved to `agent/team/pitchers.py`; workflows no longer import `scripts/`
+- [x] Tests — added `test_rates.py` + `test_players.py` (38 tests total)
+
 ---
 
 ## Remaining
 
 - [ ] FanGraphs projections — external projection source for trade/draft valuation
+- [ ] `agent/analysis/matchup.py` still has a local `_safe_float` (returns `None`, not `0.0`) — distinct semantics, left as-is; revisit if it can fold into `agent/stats`

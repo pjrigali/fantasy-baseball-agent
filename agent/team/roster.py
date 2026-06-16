@@ -7,7 +7,12 @@ Outputs: Roster dicts consumed by valuation and recommendation modules.
 """
 
 from agent.credentials import get_espn
+from agent.data.players import normalize_name
 from agent.data.storage import raw_path, read_csv
+
+# Back-compat alias — many modules import `_normalize_name` from here.
+# The canonical implementation now lives in agent.data.players.
+_normalize_name = normalize_name
 
 
 def _load_roster_rows(year: int) -> list[dict]:
@@ -57,7 +62,3 @@ def get_rostered_player_ids(year: int | None = None) -> set[str]:
     year = year or get_espn().season_year
     rows = _load_roster_rows(year)
     return {_normalize_name(r["player_name"]) for r in rows}
-
-
-def _normalize_name(name: str) -> str:
-    return name.strip().lower()

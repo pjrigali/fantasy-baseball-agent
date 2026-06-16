@@ -11,18 +11,12 @@ Outputs: team_projections and player_projections dicts consumed by simulation.py
 from datetime import date
 from collections import defaultdict
 
+from agent.data.players import normalize_name, is_on_il
 from agent.data.storage import raw_path, read_csv
 from agent.scoring import get_categories
-from agent.team.roster import _normalize_name
+from agent.stats import safe_float, derive_batting_rates, derive_pitching_rates
 
 SEASON_LENGTH = 183  # days in a full MLB season
-
-
-def _f(val) -> float:
-    try:
-        return float(val)
-    except (TypeError, ValueError):
-        return 0.0
 
 
 def _season_days(stat_rows: list[dict]) -> int:
@@ -47,30 +41,30 @@ def build_player_stats(stat_rows: list[dict]) -> dict[str, dict]:
     raw: dict[str, dict] = defaultdict(lambda: defaultdict(float))
 
     for row in stat_rows:
-        if _f(row.get("did_play", 0)) == 0:
+        if safe_float(row.get("did_play", 0)) == 0:
             continue
-        name = _normalize_name(row.get("player_name", ""))
+        name = normalize_name(row.get("player_name", ""))
         role = row.get("b_or_p", "")
         if role == "batter":
             for col in ("R", "HR", "RBI", "SB", "AB", "H", "B_BB", "TB", "HBP", "SF"):
-                raw[name][col] += _f(row.get(col))
+                raw[name][col] += safe_float(row.get(col))
         elif role == "pitcher":
             for col in ("QS", "SVHD", "SV", "HLD", "K", "W", "OUTS", "ER", "P_H", "P_BB"):
-                raw[name][col] += _f(row.get(col))
+                raw[name][col] += safe_float(row.get(col))
 
     result = {}
     for name, s in raw.items():
-        ip = s["OUTS"] / 3
-        denom = s["AB"] + s["B_BB"] + s["HBP"] + s["SF"]
-        obp = (s["H"] + s["B_BB"] + s["HBP"]) / denom if denom > 0 else 0.0
-        slg = s["TB"] / s["AB"] if s["AB"] > 0 else 0.0
+        bat   = derive_batting_rates(ab=s["AB"], h=s["H"], bb=s["B_BB"],
+                                     tb=s["TB"], hbp=s["HBP"], sf=s["SF"])
+        pitch = derive_pitching_rates(outs=s["OUTS"], er=s["ER"], p_h=s["P_H"],
+                                      p_bb=s["P_BB"], k=s["K"])
         result[name] = {
             **dict(s),
-            "IP":   round(ip, 1),
-            "OPS":  round(obp + slg, 4),
-            "ERA":  round((s["ER"] * 9 / ip), 3) if ip > 0 else 0.0,
-            "WHIP": round((s["P_H"] + s["P_BB"]) / ip, 3) if ip > 0 else 0.0,
-            "K/9":  round((s["K"] * 9 / ip), 3) if ip > 0 else 0.0,
+            "IP":   round(pitch["IP"], 1),
+            "OPS":  round(bat["OPS"], 4),
+            "ERA":  round(pitch["ERA"], 3),
+            "WHIP": round(pitch["WHIP"], 3),
+            "K/9":  round(pitch["K/9"], 3),
         }
     return result
 
@@ -96,18 +90,18 @@ def project_player_stats(
             continue  # insufficient sample
 
         p = {col: s.get(col, 0) * scale for col in counting}
-        proj_ip = p["OUTS"] / 3
-        denom = p["AB"] + p["B_BB"] + p["HBP"] + p["SF"]
-        obp = (p["H"] + p["B_BB"] + p["HBP"]) / denom if denom > 0 else 0.0
-        slg = p["TB"] / p["AB"] if p["AB"] > 0 else 0.0
+        bat   = derive_batting_rates(ab=p["AB"], h=p["H"], bb=p["B_BB"],
+                                     tb=p["TB"], hbp=p["HBP"], sf=p["SF"])
+        pitch = derive_pitching_rates(outs=p["OUTS"], er=p["ER"], p_h=p["P_H"],
+                                      p_bb=p["P_BB"], k=p["K"])
 
         projected[name] = {
             **p,
-            "IP":   round(proj_ip, 1),
-            "OPS":  round(obp + slg, 4),
-            "ERA":  round((p["ER"] * 9 / proj_ip), 3) if proj_ip > 0 else 0.0,
-            "WHIP": round((p["P_H"] + p["P_BB"]) / proj_ip, 3) if proj_ip > 0 else 0.0,
-            "K/9":  round((p["K"] * 9 / proj_ip), 3) if proj_ip > 0 else 0.0,
+            "IP":   round(pitch["IP"], 1),
+            "OPS":  round(bat["OPS"], 4),
+            "ERA":  round(pitch["ERA"], 3),
+            "WHIP": round(pitch["WHIP"], 3),
+            "K/9":  round(pitch["K/9"], 3),
         }
     return projected
 
@@ -132,9 +126,9 @@ def build_team_projections(
     for row in sorted(roster_rows, key=lambda r: r.get("date", "")):
         inj = row.get("player_injury_status", "")
         # Exclude IL players from team projections (not contributing)
-        if _is_on_il(inj):
+        if is_on_il(inj):
             continue
-        player_team[_normalize_name(row["player_name"])] = int(row["team_id"])
+        player_team[normalize_name(row["player_name"])] = int(row["team_id"])
 
     # Aggregate raw components per team
     team_raw: dict[int, dict] = defaultdict(lambda: defaultdict(float))
@@ -150,25 +144,20 @@ def build_team_projections(
     # Re-derive rate stats per team
     result = {}
     for tid, s in team_raw.items():
-        ip = s["OUTS"] / 3
-        denom = s["AB"] + s["B_BB"] + s["HBP"] + s["SF"]
-        obp = (s["H"] + s["B_BB"] + s["HBP"]) / denom if denom > 0 else 0.0
-        slg = s["TB"] / s["AB"] if s["AB"] > 0 else 0.0
+        bat   = derive_batting_rates(ab=s["AB"], h=s["H"], bb=s["B_BB"],
+                                     tb=s["TB"], hbp=s["HBP"], sf=s["SF"])
+        pitch = derive_pitching_rates(outs=s["OUTS"], er=s["ER"], p_h=s["P_H"],
+                                      p_bb=s["P_BB"], k=s["K"])
         team = dict(s)
         team.update({
-            "OPS":  round(obp + slg, 4),
-            "ERA":  round((s["ER"] * 9 / ip), 3) if ip > 0 else 0.0,
-            "WHIP": round((s["P_H"] + s["P_BB"]) / ip, 3) if ip > 0 else 0.0,
-            "K/9":  round((s["K"] * 9 / ip), 3) if ip > 0 else 0.0,
+            "OPS":  round(bat["OPS"], 4),
+            "ERA":  round(pitch["ERA"], 3),
+            "WHIP": round(pitch["WHIP"], 3),
+            "K/9":  round(pitch["K/9"], 3),
         })
         result[tid] = {k: team[k] for k in cat_names if k in team}
 
     return result
-
-
-def _is_on_il(injury_status: str) -> bool:
-    s = (injury_status or "").upper()
-    return "DL" in s or s in {"INJURY_RESERVE", "OUT", "SUSPENSION"}
 
 
 def load_projections(year: int | None = None) -> tuple[dict, dict, dict, int]:

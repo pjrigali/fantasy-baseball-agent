@@ -4,8 +4,8 @@ Description: Daily data collection workflow. Chains ESPN roster snapshot and
              run independently — a failure in one does not abort the other.
              Designed to run once per day, typically after games finish.
 Source Data: ESPN Fantasy API, MLB Stats API.
-Outputs: data-lake/01_Bronze/fantasy_baseball_agent/roster_espn_season_{year}.csv
-         data-lake/01_Bronze/fantasy_baseball_agent/stats_mlb_daily_{year}.csv
+Outputs: data/raw/roster_espn_season_{year}.csv
+         data/raw/stats_mlb_daily_{year}.csv
          logs/daily_collection.jsonl
 """
 

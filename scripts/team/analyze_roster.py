@@ -19,8 +19,9 @@ from agent.credentials import get_espn
 from agent.data.storage import raw_path, read_csv
 from agent.logger import RunLogger
 from agent.team.valuation import calculate_daily_values, compute_player_values, rank_players
-from agent.team.recommendations import get_recommendations, format_recommendations, _is_on_il
-from agent.team.roster import get_my_roster, _normalize_name
+from agent.data.players import is_on_il, normalize_name
+from agent.team.recommendations import get_recommendations, format_recommendations
+from agent.team.roster import get_my_roster
 
 
 def main():
@@ -73,14 +74,14 @@ def main():
         flagged_count = 0
         for player in sorted(my_roster, key=lambda r: r.get("player_position", "")):
             name    = player["player_name"]
-            norm    = _normalize_name(name)
+            norm    = normalize_name(name)
             pos     = player.get("player_position", "?")
             inj     = player.get("player_injury_status", "")
             vals    = player_values.get(norm, player_values.get(name, {}))
             s_z     = vals.get("season_z",  None)
             r_z     = vals.get("rolling_z", None)
             flagged = vals.get("flagged", False)
-            on_il   = _is_on_il(inj)
+            on_il   = is_on_il(inj)
 
             s_str = f"{s_z:>+9.3f}" if s_z is not None else "      N/A"
             r_str = f"{r_z:>+8.3f}" if r_z is not None else "     N/A"
