@@ -15,19 +15,8 @@ import requests
 from collections import defaultdict
 from datetime import date, timedelta
 
-import unicodedata
 from agent.credentials import get_espn
-
-
-def _normalize_name(name: str) -> str:
-    n = unicodedata.normalize("NFKD", name)
-    n = "".join(c for c in n if not unicodedata.combining(c))
-    return n.lower().strip()
-
-
-def _is_on_il(inj: str) -> bool:
-    s = (inj or "").upper()
-    return "DL" in s or s in {"INJURY_RESERVE", "OUT", "SUSPENSION"}
+from agent.data.players import is_on_il as _is_on_il, normalize_name as _normalize_name
 
 
 def _safe_int(val) -> int:

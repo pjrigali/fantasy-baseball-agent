@@ -44,7 +44,7 @@ class RunLogger:
             log.set(rows_fetched=len(rows))
 
     On exit writes one JSONL line to:
-        data-lake/00_Logs/fantasy_baseball_agent/{name}.jsonl
+        logs/{name}.jsonl  (inside the project root)
 
     Fields always present in the log entry:
         script, ts_start, ts_end, duration_s, status, error

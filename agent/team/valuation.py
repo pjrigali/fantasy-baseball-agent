@@ -20,6 +20,7 @@ import statistics
 from collections import defaultdict
 
 from agent.scoring import get_categories
+from agent.stats import safe_float, derive_batting_rates, derive_pitching_rates
 
 # Categories that apply to each role — driven by league settings
 _BATTER_CATS  = {"R", "HR", "RBI", "SB", "OPS", "TB", "H", "BB"}
@@ -32,13 +33,6 @@ _CAT_TO_COL: dict[str, str] = {
 
 FLAG_28D_THRESHOLD    = -0.5
 FLAG_SEASON_THRESHOLD = -0.3
-
-
-def _safe_float(val) -> float:
-    try:
-        return float(val)
-    except (TypeError, ValueError):
-        return 0.0
 
 
 def _zscore_list(values: list[float]) -> list[float]:
@@ -76,7 +70,7 @@ def calculate_daily_values(
     # Group rows by date, skipping non-playing rows
     by_date: dict[str, list[dict]] = defaultdict(list)
     for row in stat_rows:
-        if _safe_float(row.get("did_play", 0)) == 0:
+        if safe_float(row.get("did_play", 0)) == 0:
             continue
         by_date[row["date"]].append(row)
 
@@ -94,37 +88,37 @@ def calculate_daily_values(
             if role == "batter":
                 for cat_name, col in _CAT_TO_COL.items():
                     if cat_name in _BATTER_CATS:
-                        batter_stats[name][cat_name] += _safe_float(row.get(col, 0))
+                        batter_stats[name][cat_name] += safe_float(row.get(col, 0))
                 # Rate stat components
-                batter_stats[name]["_ab"]  += _safe_float(row.get("AB"))
-                batter_stats[name]["_h"]   += _safe_float(row.get("H"))
-                batter_stats[name]["_bb"]  += _safe_float(row.get("B_BB"))
-                batter_stats[name]["_tb"]  += _safe_float(row.get("TB"))
-                batter_stats[name]["_hbp"] += _safe_float(row.get("HBP"))
-                batter_stats[name]["_sf"]  += _safe_float(row.get("SF"))
+                batter_stats[name]["_ab"]  += safe_float(row.get("AB"))
+                batter_stats[name]["_h"]   += safe_float(row.get("H"))
+                batter_stats[name]["_bb"]  += safe_float(row.get("B_BB"))
+                batter_stats[name]["_tb"]  += safe_float(row.get("TB"))
+                batter_stats[name]["_hbp"] += safe_float(row.get("HBP"))
+                batter_stats[name]["_sf"]  += safe_float(row.get("SF"))
 
             elif role == "pitcher":
                 for cat_name, col in _CAT_TO_COL.items():
                     if cat_name in _PITCHER_CATS:
-                        pitcher_stats[name][cat_name] += _safe_float(row.get(col, 0))
-                pitcher_stats[name]["_outs"] += _safe_float(row.get("OUTS"))
-                pitcher_stats[name]["_er"]   += _safe_float(row.get("ER"))
-                pitcher_stats[name]["_ph"]   += _safe_float(row.get("P_H"))
-                pitcher_stats[name]["_pbb"]  += _safe_float(row.get("P_BB"))
-                pitcher_stats[name]["_k"]    += _safe_float(row.get("K"))
+                        pitcher_stats[name][cat_name] += safe_float(row.get(col, 0))
+                pitcher_stats[name]["_outs"] += safe_float(row.get("OUTS"))
+                pitcher_stats[name]["_er"]   += safe_float(row.get("ER"))
+                pitcher_stats[name]["_ph"]   += safe_float(row.get("P_H"))
+                pitcher_stats[name]["_pbb"]  += safe_float(row.get("P_BB"))
+                pitcher_stats[name]["_k"]    += safe_float(row.get("K"))
 
         # Derive rate stats
         for name, s in batter_stats.items():
-            denom = s["_ab"] + s["_bb"] + s["_hbp"] + s["_sf"]
-            obp = (s["_h"] + s["_bb"] + s["_hbp"]) / denom if denom > 0 else 0.0
-            slg = s["_tb"] / s["_ab"] if s["_ab"] > 0 else 0.0
-            s["OPS"] = obp + slg
+            s["OPS"] = derive_batting_rates(
+                ab=s["_ab"], h=s["_h"], bb=s["_bb"], tb=s["_tb"],
+                hbp=s["_hbp"], sf=s["_sf"],
+            )["OPS"]
 
         for name, s in pitcher_stats.items():
-            ip = s["_outs"] / 3
-            s["ERA"]  = (s["_er"] * 9 / ip) if ip > 0 else 0.0
-            s["WHIP"] = ((s["_ph"] + s["_pbb"]) / ip) if ip > 0 else 0.0
-            s["K/9"]  = (s["_k"] * 9 / ip) if ip > 0 else 0.0
+            rates = derive_pitching_rates(
+                outs=s["_outs"], er=s["_er"], p_h=s["_ph"], p_bb=s["_pbb"], k=s["_k"],
+            )
+            s["ERA"], s["WHIP"], s["K/9"] = rates["ERA"], rates["WHIP"], rates["K/9"]
 
         # Z-score batters on batter categories only
         day_values: dict[str, float] = defaultdict(float)

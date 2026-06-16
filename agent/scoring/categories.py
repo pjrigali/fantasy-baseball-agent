@@ -8,6 +8,7 @@ Outputs: Dict mapping ESPN team_id → category totals dict.
 """
 
 from agent.scoring import get_categories
+from agent.stats import safe_int, derive_batting_rates, derive_pitching_rates
 
 
 # Maps ESPN category names → how to derive them from our MLB stat columns.
@@ -26,20 +27,6 @@ _COUNTING_MAP = {
 }
 
 _RATE_CATS = {"OPS", "ERA", "WHIP", "K/9"}
-
-
-def _int(val) -> int:
-    try:
-        return int(val)
-    except (TypeError, ValueError):
-        return 0
-
-
-def _float(val) -> float:
-    try:
-        return float(val)
-    except (TypeError, ValueError):
-        return 0.0
 
 
 def aggregate_team_stats(stat_rows: list[dict], year: int | None = None) -> dict:
@@ -64,42 +51,42 @@ def aggregate_team_stats(stat_rows: list[dict], year: int | None = None) -> dict
     counts: dict[str, int] = {name: 0 for name in _COUNTING_MAP if name in cat_names}
 
     for row in stat_rows:
-        if _int(row.get("did_play")) == 0:
+        if safe_int(row.get("did_play")) == 0:
             continue
 
         role = row.get("b_or_p")
 
         if role == "batter":
-            ab  += _int(row.get("AB"))
-            h   += _int(row.get("H"))
-            bb  += _int(row.get("B_BB"))
-            tb  += _int(row.get("TB"))
-            hbp += _int(row.get("HBP"))
-            sf  += _int(row.get("SF"))
+            ab  += safe_int(row.get("AB"))
+            h   += safe_int(row.get("H"))
+            bb  += safe_int(row.get("B_BB"))
+            tb  += safe_int(row.get("TB"))
+            hbp += safe_int(row.get("HBP"))
+            sf  += safe_int(row.get("SF"))
             for name, (r, col) in _COUNTING_MAP.items():
                 if r == "batter" and name in counts:
-                    counts[name] += _int(row.get(col))
+                    counts[name] += safe_int(row.get(col))
 
         elif role == "pitcher":
-            outs += _int(row.get("OUTS"))
-            er   += _int(row.get("ER"))
-            p_h  += _int(row.get("P_H"))
-            p_bb += _int(row.get("P_BB"))
-            k    += _int(row.get("K"))
+            outs += safe_int(row.get("OUTS"))
+            er   += safe_int(row.get("ER"))
+            p_h  += safe_int(row.get("P_H"))
+            p_bb += safe_int(row.get("P_BB"))
+            k    += safe_int(row.get("K"))
             for name, (r, col) in _COUNTING_MAP.items():
                 if r == "pitcher" and name in counts:
-                    counts[name] += _int(row.get(col))
+                    counts[name] += safe_int(row.get(col))
 
-    # Derived rate stats
-    ip = outs / 3
-    obp = (h + bb + hbp) / (ab + bb + hbp + sf) if (ab + bb + hbp + sf) > 0 else 0.0
-    slg = tb / ab if ab > 0 else 0.0
+    # Derived rate stats — single source of truth in agent.stats
+    bat   = derive_batting_rates(ab=ab, h=h, bb=bb, tb=tb, hbp=hbp, sf=sf)
+    pitch = derive_pitching_rates(outs=outs, er=er, p_h=p_h, p_bb=p_bb, k=k)
+    ip = pitch["IP"]
 
     derived = {
-        "OPS":  round(obp + slg, 4),
-        "ERA":  round((er * 9) / ip, 4) if ip > 0 else 0.0,
-        "WHIP": round((p_bb + p_h) / ip, 4) if ip > 0 else 0.0,
-        "K/9":  round((k * 9) / ip, 4) if ip > 0 else 0.0,
+        "OPS":  round(bat["OPS"], 4),
+        "ERA":  round(pitch["ERA"], 4),
+        "WHIP": round(pitch["WHIP"], 4),
+        "K/9":  round(pitch["K/9"], 4),
     }
 
     result = {**counts}

@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "fantasy-baseball-agent"
@@ -25,6 +25,9 @@ dev = [
 
 [project.scripts]
 fba = "agent.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["agent*"]
 
 [tool.ruff]
 line-length = 100

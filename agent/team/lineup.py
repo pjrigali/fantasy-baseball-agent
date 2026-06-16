@@ -39,14 +39,11 @@ _SLOT_PRIORITY: dict[str, int] = {
 }
 
 _BENCH_SLOTS = {"BE", "IL"}
-_IL_STATUSES = {"FIFTEEN_DAY_DL", "TEN_DAY_DL", "SIXTY_DAY_DL", "INJURY_RESERVE", "OUT", "SUSPENSION"}
 
 _MLB_HEADERS = {"User-Agent": "Mozilla/5.0"}
 
-
-def _is_on_il(inj: str) -> bool:
-    s = (inj or "").upper()
-    return "DL" in s or s in _IL_STATUSES
+# Canonical IL detection lives in agent.data.players; alias keeps call sites local.
+from agent.data.players import is_on_il as _is_on_il
 
 
 def _teams_playing_today() -> set[str]:

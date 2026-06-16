@@ -11,18 +11,13 @@ Source Data: Output of valuation.compute_player_values(), roster.get_my_roster()
 Outputs: List of recommendation dicts consumed by scripts and report generator.
 """
 
-from agent.team.roster import get_my_roster, get_rostered_player_ids, _normalize_name
-
-_IL_STATUSES = {"FIFTEEN_DAY_DL", "TEN_DAY_DL", "SIXTY_DAY_DL", "INJURY_RESERVE", "OUT", "SUSPENSION"}
+from agent.data.players import normalize_name, is_on_il
+from agent.stats import safe_float, derive_batting_rates, derive_pitching_rates
+from agent.team.roster import get_my_roster, get_rostered_player_ids
 
 _OPS_MIN_FA   = 0.700
 _LINEUP_DAYS  = 14
 _SP_MIN_IP    = 5.0
-
-
-def _is_on_il(injury_status: str) -> bool:
-    s = (injury_status or "").upper()
-    return "DL" in s or s in _IL_STATUSES
 
 
 def _compute_season_stats(
@@ -35,47 +30,44 @@ def _compute_season_stats(
     """
     from collections import defaultdict
 
-    def _f(v):
-        try: return float(v)
-        except: return 0.0
-
     raw: dict[str, dict] = defaultdict(lambda: defaultdict(float))
 
     for row in stat_rows:
-        name = _normalize_name(row.get("player_name", ""))
+        name = normalize_name(row.get("player_name", ""))
         if name not in player_names:
             continue
-        if _f(row.get("did_play", 0)) == 0:
+        if safe_float(row.get("did_play", 0)) == 0:
             continue
         role = row.get("b_or_p", "")
         if role == "batter":
-            raw[name]["ab"]  += _f(row.get("AB"))
-            raw[name]["h"]   += _f(row.get("H"))
-            raw[name]["bb"]  += _f(row.get("B_BB"))
-            raw[name]["tb"]  += _f(row.get("TB"))
-            raw[name]["hbp"] += _f(row.get("HBP"))
-            raw[name]["sf"]  += _f(row.get("SF"))
+            raw[name]["ab"]  += safe_float(row.get("AB"))
+            raw[name]["h"]   += safe_float(row.get("H"))
+            raw[name]["bb"]  += safe_float(row.get("B_BB"))
+            raw[name]["tb"]  += safe_float(row.get("TB"))
+            raw[name]["hbp"] += safe_float(row.get("HBP"))
+            raw[name]["sf"]  += safe_float(row.get("SF"))
         elif role == "pitcher":
-            raw[name]["outs"]  += _f(row.get("OUTS"))
-            raw[name]["er"]    += _f(row.get("ER"))
-            raw[name]["ph"]    += _f(row.get("P_H"))
-            raw[name]["pbb"]   += _f(row.get("P_BB"))
-            raw[name]["svhd"]  += _f(row.get("SVHD"))
-            raw[name]["qs"]    += _f(row.get("QS"))
+            raw[name]["outs"]  += safe_float(row.get("OUTS"))
+            raw[name]["er"]    += safe_float(row.get("ER"))
+            raw[name]["ph"]    += safe_float(row.get("P_H"))
+            raw[name]["pbb"]   += safe_float(row.get("P_BB"))
+            raw[name]["svhd"]  += safe_float(row.get("SVHD"))
+            raw[name]["qs"]    += safe_float(row.get("QS"))
 
     result = {}
     for name, s in raw.items():
-        ip   = s["outs"] / 3
-        denom = s["ab"] + s["bb"] + s["hbp"] + s["sf"]
-        obp  = (s["h"] + s["bb"] + s["hbp"]) / denom if denom > 0 else 0.0
-        slg  = s["tb"] / s["ab"] if s["ab"] > 0 else 0.0
+        bat   = derive_batting_rates(ab=s["ab"], h=s["h"], bb=s["bb"],
+                                     tb=s["tb"], hbp=s["hbp"], sf=s["sf"])
+        # 99.0 sentinel so pitchers with no innings rank as "bad", not "great".
+        pitch = derive_pitching_rates(outs=s["outs"], er=s["er"], p_h=s["ph"],
+                                      p_bb=s["pbb"], k=0.0, no_ip_value=99.0)
         result[name] = {
-            "OPS":  round(obp + slg, 4),
+            "OPS":  round(bat["OPS"], 4),
             "SVHD": s["svhd"],
             "QS":   s["qs"],
-            "IP":   round(ip, 1),
-            "ERA":  round((s["er"] * 9 / ip), 3) if ip > 0 else 99.0,
-            "WHIP": round((s["ph"] + s["pbb"]) / ip, 3) if ip > 0 else 99.0,
+            "IP":   round(pitch["IP"], 1),
+            "ERA":  round(pitch["ERA"], 3),
+            "WHIP": round(pitch["WHIP"], 3),
         }
     return result
 
@@ -103,13 +95,13 @@ def get_recommendations(
 
     # Map name → roster info
     my_players: dict[str, dict] = {
-        _normalize_name(r["player_name"]): r for r in my_roster
+        normalize_name(r["player_name"]): r for r in my_roster
     }
 
     # Identify free agents in the player_values pool
     fa_names = {
-        _normalize_name(n) for n in player_values
-        if _normalize_name(n) not in rostered_names
+        normalize_name(n) for n in player_values
+        if normalize_name(n) not in rostered_names
     }
 
     # Compute season stats for everyone we need
@@ -135,7 +127,7 @@ def get_recommendations(
 
     for norm_name, roster_row in my_players.items():
         # Skip IL players — they may return
-        if _is_on_il(roster_row.get("player_injury_status", "")):
+        if is_on_il(roster_row.get("player_injury_status", "")):
             continue
 
         my_val = player_values.get(norm_name, {})
