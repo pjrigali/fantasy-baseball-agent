@@ -1,0 +1,49 @@
+# Fantasy Baseball Agent — Environment
+
+## Python Environment
+
+- **Python Executable**: `{{PYTHON_EXECUTABLE}}`
+- **Package Root**: `{{PROJECT_ROOT}}`
+- **Install Command**: `pip install -e .` (run once from the package root)
+- **CLI**: `fba daily | weekly | trade-scan | draft-prep`
+
+## Data Paths
+
+| Path | Contents |
+|------|----------|
+| `data/raw/` | Raw ESPN and MLB API outputs (CSV, JSON) |
+| `data/processed/` | Derived analysis outputs |
+| `reports/` | Weekly prep and trade scan markdown reports |
+| `logs/` | JSONL run logs (one file per workflow/script) |
+| `config.ini` | Credentials and LLM provider settings (never commit) |
+
+## LLM Configuration
+
+The `agent/llm/` module supports four providers. Set the active one in `config.ini`:
+
+```ini
+[llm]
+provider = anthropic    # anthropic | google | openai | ollama
+model    = claude-sonnet-4-6
+```
+
+See `CREDENTIALS_GUIDE.md` for ESPN cookie setup and `config.ini.example` for the full config schema.
+
+---
+
+## Your Coding Standards
+
+<!-- Fill in your own rules below. The section above is fixed project structure. -->
+<!-- These guidelines apply to any code you write or edit in this project.      -->
+
+- Never use `pandas` in final artifacts or reusable module code
+- Never hardcode credentials — read from `config.ini` via `configparser`
+- All `.py` files must have a module docstring with **Description**, **Source Data**, and **Outputs** headers
+- Data file naming: `{Category}_{Source}_{Granularity}_{TimePeriod}.{ext}` (see `CONVENTIONS.md`)
+- Script naming: `{Verb}_{Object}_{Source}_{Modifier}.py`
+
+---
+
+## Your Notes
+
+<!-- Add any additional constraints, context, or reminders for your AI agent here. -->
