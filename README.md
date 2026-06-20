@@ -31,24 +31,43 @@ Run these steps once after forking. They only need to be repeated if credentials
 pip install -e ".[dev]"
 ```
 
-**Step 2 — Set up credentials**
+**Step 2 — Configure the AI harness**
+
+Run the harness setup to generate your local `CLAUDE.md`, `GEMINI.md`, and `ENVIRONMENT.md` from the templates in `harness/templates/`. Pick whichever agent(s) you use — Claude Code, Gemini CLI, or both.
+```bash
+python scripts/setup_harness.py
+```
+This also detects your Python path and adds the generated files to `.gitignore` so they stay off of version control. Edit `ENVIRONMENT.md` afterward to add your own coding standards and notes.
+
+**Step 3 — Set up credentials**
 
 See [CREDENTIALS_GUIDE.md](CREDENTIALS_GUIDE.md) for how to find your ESPN cookie values, then run:
 ```bash
 python scripts/credentials/setup_credentials.py
 ```
 
-**Step 3 — Fetch league settings** ⚠️ Required before any scoring, team, or trade features work
+**Step 4 — Build the player identity map** ⚠️ Required before any cross-source analysis (trade, valuation, matchup)
+```bash
+python scripts/data/generate_player_map.py
+```
+
+MLB and ESPN use entirely different player ID systems. Without this bridge, any workflow that joins the two sources — trade analysis, player valuation, matchup scoring — cannot reliably identify who it's looking at. The map resolves three things: the MLBAM-to-ESPN ID link, the batter/pitcher classification (using the MLB Stats API as the authoritative source), and namesake disambiguation (two players with the same name resolved by position and team).
+
+**This step takes 2–5 minutes** on first run due to MLB Stats API calls. By default it covers the past two seasons (prior year + current year), which is sufficient for all in-season workflows. If you need historical analysis going back further, pass `--first-year 2023` — expect roughly 1–2 additional minutes per extra season.
+
+The map lives at `data/processed/player_map.csv`. Rebuild it weekly or after significant roster moves (trades, deadline call-ups, DFA actions). If any downstream workflow returns "player not found" errors, rebuilding the map is the first thing to try.
+
+**Step 5 — Fetch league settings** ⚠️ Required before any scoring, team, or trade features work
 ```bash
 python scripts/data/fetch_settings_espn_season.py
 ```
 This captures your league's scoring categories, lineup slots, roster rules, and season structure from ESPN and saves them locally. Re-run at the start of each new season.
 
-**Step 4 — Run the first data collection**
+**Step 6 — Run the first data collection**
 ```bash
 python scripts/workflows/run_daily_collection.py
 ```
-Pulls current ESPN rosters and MLB boxscore stats into the data lake. Schedule this to run daily.
+Pulls current ESPN rosters and MLB boxscore stats into `data/raw/`. Schedule this to run daily.
 
 ## Project Structure
 

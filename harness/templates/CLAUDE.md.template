@@ -1,0 +1,35 @@
+# Fantasy Baseball Agent — Claude Code Configuration
+
+@ENVIRONMENT.md
+
+## Session Start
+
+At the start of each session, ensure data is fresh:
+
+```
+fba daily
+```
+
+Skip only if the user explicitly says data is already current.
+
+## Skills
+
+Skills are defined in `harness/skills/`. Trigger them by name or via `/skill-name`.
+
+@harness/skills/fantasy-daily/SKILL.md
+@harness/skills/fantasy-weekly/SKILL.md
+@harness/skills/fantasy-trade-scan/SKILL.md
+@harness/skills/fantasy-draft-prep/SKILL.md
+@harness/skills/fantasy-lineup/SKILL.md
+@harness/skills/fantasy-player-map/SKILL.md
+
+## Workflows
+
+Step-by-step workflow docs live in `harness/workflows/`. Reference them with `@harness/workflows/<name>.md`.
+
+| Workflow | File |
+|----------|------|
+| Daily Collection | `harness/workflows/daily-collection.md` |
+| Weekly Prep | `harness/workflows/weekly-prep.md` |
+| Trade Scan | `harness/workflows/trade-scan.md` |
+| Draft Prep | `harness/workflows/draft-prep.md` |
