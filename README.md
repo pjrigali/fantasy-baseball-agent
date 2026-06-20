@@ -119,6 +119,15 @@ Every command accepts `--year` and `--dry-run`. The underlying scripts in
 
 ## Changelog
 
+### 2026-06-20 — AI harness setup and player identity map
+
+- **Dual-agent harness** — new `harness/` directory with shared templates, skills, and workflow docs that work identically in Claude Code and Gemini CLI (Antigravity). `CLAUDE.md`, `GEMINI.md`, and `ENVIRONMENT.md` are generated per-fork and gitignored so machine-specific paths stay off version control.
+- **One-time setup script** — `scripts/setup_harness.py` generates the local config files, detects the Python path, and chains to credential setup.
+- **Six shared skills** — `fantasy-daily`, `fantasy-weekly`, `fantasy-trade-scan`, `fantasy-draft-prep`, `fantasy-lineup`, `fantasy-player-map` in `harness/skills/`, readable by both agents.
+- **Four workflow docs** — `harness/workflows/` covers daily collection, weekly prep, trade scan, and draft prep with step-by-step instructions and edge-case rules.
+- **Canonical player identity map** — new `agent/data/player_map.py` bridges MLBAM and ESPN player IDs via a three-stage pipeline (MLB Stats API → local data files → MLB people/search fallback). Default window is the past two seasons; `--first-year` widens it. Script wrapper at `scripts/data/generate_player_map.py`.
+- **README** — setup steps updated with harness config (step 2) and player map build (step 4), including timing notes and window guidance. Fixed duplicate step numbering.
+
 ### 2026-06-16 — Structure cleanup
 - **Packaging fixed** — corrected the build backend and package discovery in
   `pyproject.toml`; `pip install -e .` now works.
